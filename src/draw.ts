@@ -1,8 +1,15 @@
 import * as $ from 'jquery';
-import {C} from '@angular/core/src/render3';
 
+// Namespace for svg elements
 const xmlns = "http://www.w3.org/2000/svg";
 
+/** ===========
+ *  Variables
+    =========== */
+
+/** ===========
+ *    CIRCLES
+    =========== */
 const CIRCLE_COLOR = 'transparent';
 const CIRCLE_COLOR_SELECTED = 'rgba(0,255,0,0.5)';
 const CIRCLE_SIZE = 15;
@@ -10,22 +17,38 @@ const CIRCLE_SIZE = 15;
 const CIRCLE_STROKE_COLOR = 'black';
 const CIRCLE_STROKE_WIDTH = '3';
 
+/** ============
+ *   CONNECTOR
+    ============ */
 
 const CONNECTOR_COLOR = 'black';//'#5d4037'
 const CONNECTOR_WIDTH = 4;
 
+/** =============
+ *  CURVED CONNECTOR CONTROLLER
+   ============== */
+
 const CONTROLLER_COLOR = 'red';
 
+/** ===========================
+ *   GRID SIZE FOR SNAP TP GRID
+    =========================== */
 const GRID_SIZE = 20; //TODO
 
-
+/**
+ * Enum for Events
+ */
 export enum SVG_EVENTS {
   NULL = 0,
-  SELECT = 1,
+  SELECT = 1, //TODO
   ADD = 2,
   CONNECT = 3
 }
 
+/**
+ * SVG Element
+ * Adds SVG HTMLElement to an Container
+ */
 export class SVG {
 
   // ============
@@ -33,69 +56,89 @@ export class SVG {
   // ============
   public gridVisible = true;
 
+  // ============
+  // HTMLElements
+  // field = Parent Element
+  // svg   = New SVG- Element
+  // ============
   public field: HTMLElement;
   public svg: Element;
 
+  //Groups for child elements
   public connectorGroup: Element; //render first
-  public circleGroup: Element;
+  public circleGroup: Element; //render second
 
+  //List for child Data
   public circles: Array<Circle> = [];
 
-
+  // ==============
+  // curved  = All Connectors where CurvedConnectors
+  // snap_to_grid = New Circles, dragged circles snaps to Grid
+  // ==============
   public curved = false;
-
-
-  public circles_id = 0;
-
-
-  public selected_element: SVGElement; //TODO
-  public drag_element: Dragable; //TODO
-
-
-  public mode: SVG_EVENTS;
   private snap_to_grid = false;
 
+  //SVG Mode (for clicks)
+  public mode: SVG_EVENTS;
+
+  // =================
+  // For selection and dragging
+  // =================
+  public selected_element: SVGElement; //TODO as list for multi dragging!
+  public drag_element: IDragable;
+
+  //id for circles
+  public circles_id = 0;
+
+  /**
+   * Create a mew SVG-Element
+   * @param id parent container
+   */
   constructor(id: string) {
     this.field =  document.getElementById(id);
+    this.svg = document.createElementNS(xmlns, 'svg'); //create Element
 
-    var boxWidth = 300;
-    var boxHeight = 300;
-
-
-    this.svg = document.createElementNS(xmlns, 'svg');
-
-
+    //set Attributes for svg-element
     this.svg.setAttributeNS(null, 'width', '100%');
     this.svg.setAttributeNS(null, 'height', '100%');
     this.svg.setAttributeNS( null, 'id', 'svg_canvas'); //TODO
 
+    // Set Grid as background if option selected
     if (this.gridVisible) {
       this.svg.setAttributeNS( null, 'style', 'background: url(http://svgjs.com/svg.draw.js/demo/grid.png) #fff;'); //TODO
     }
 
-    //Group for connectors
+    //create Group for connectors and add to svg
     this.connectorGroup = document.createElementNS(xmlns, 'g');
     this.svg.appendChild(this.connectorGroup);
 
     /*  ===================
     *       Drag and Drop
         =================== */
-    //For Drag
     this.svg.addEventListener('mousemove', (event) => {
+      /*
+      if an drag element is set
+       */
       if (this.drag_element) {
-        //update x ,y
+        /*
+        calculate mouse position in container
+         */
+        //TODO maybe get container id from wrapper??
+        const mouse_x = event.pageX - $('#svg_canvas').offset().left;
+        const mouse_y = event.pageY - $('#svg_canvas').offset().top;
 
-        const mouse_x = event.pageX - $('#svg_canvas').offset().left;// - this.drag_element.r;
-        const mouse_y = event.pageY - $('#svg_canvas').offset().top;// + this.drag_element.r;
+        /*
 
+         */
+        //TODO kann weg?
         const pos_x = this.drag_element.x + (mouse_x - this.drag_element.x);
         const pos_y = this.drag_element.y + (mouse_y - this.drag_element.y);
 
+        //when snapMode is active
         if (this.isSnapMode()) {
 
-          console.log(pos_x);
           this.drag_element.x = Math.round(pos_x / GRID_SIZE) * GRID_SIZE - this.drag_element.r;
-          console.log(this.drag_element.x);
+
           if (this.drag_element.x <= 0) {
             this.drag_element.x += 20;
           }
@@ -120,54 +163,61 @@ export class SVG {
     });
 
     /**
-    this.svg.addEventListener('keypress', (event) => { //TODO not working
-      console.log("keyevent");
-      if (event.keyCode === 17) {//CTRL
-        this.setSnapToGrid(true);
-        console.log("KEyevent");
-      }
-    });**/
-    document.addEventListener('keydown', (event) => { //TODO not working
-    if (event.keyCode === 17) {//CTRL
-      this.setSnapToGrid(true);
+     * KeyListener for Canvas
+     */
+    document.addEventListener('keydown', (event) => {
+    if (event.keyCode === 17) {//if CTRL is pressed
+      this.setSnapToGrid(true); //active GridMode
     }
 
-    if (event.keyCode === 46) { //Delete / Entf
-      this.selected_element.remove();
+    if (event.keyCode === 46) { //if Delete/Entf pressed
+      this.selected_element.remove(); //remove selected element
       this.selected_element = undefined;
     }
 
   });
 
+    /**
+     * KeyListener
+     * for release
+     *
+     */
     document.addEventListener('keyup', (event) => { //TODO not working
       if (event.keyCode === 17) {//CTRL
-        this.setSnapToGrid(false);
+        this.setSnapToGrid(false); //disable GridMode
       }
     });
 
-
-
-
-    //Add Circle
+    /**
+     * MouseDown in Canvas
+     */
     this.svg.addEventListener('mousedown', (event) => {
+
       //add Circle
       if (this.mode === SVG_EVENTS.ADD) {
+        /*
+        calculate MousePosition
+         */
+        const pos_x = event.pageX - $('#svg_canvas').offset().left;
+        const pos_y = event.pageY - $('#svg_canvas').offset().top;
 
-        const pos_x = event.pageX - $('#svg_canvas').offset().left;// - CIRCLE_SIZE;
-        const pos_y = event.pageY - $('#svg_canvas').offset().top;// + CIRCLE_SIZE;
-
+        // add Circle
         this.addCircle(new Circle(this, pos_x, pos_y, CIRCLE_SIZE));
       }
     });
 
-
+    //add geneated SVG-Element to wrapper
     this.field.appendChild(this.svg);
   }
 
+  /**
+   * Add a Circle to the canvas
+   * @param c
+   */
   addCircle(c: Circle) {
-    this.circles.push(c);
-    c.setId(this.circles_id);
-    this.svg.appendChild(c.getGroup());
+    this.circles.push(c); //add to list
+    c.setId(this.circles_id); //set CircleID
+    this.svg.appendChild(c.getGroup()); //add to canvas
     this.circles_id++;
   }
 
@@ -255,7 +305,7 @@ export class SVGElement {
 }
 
 
-export class Circle extends SVGElement implements Dragable {
+export class Circle extends SVGElement implements IDragable {
 
   public x: number;
   public y: number;
@@ -565,7 +615,7 @@ export class CurvedConnector extends Connector {
 }
 
 
-export class MiddlePoint extends SVGElement implements Dragable {
+export class MiddlePoint extends SVGElement implements IDragable {
 
   public x: number;
   public y: number;
@@ -644,7 +694,10 @@ export class MiddlePoint extends SVGElement implements Dragable {
 
 }
 
-export interface Dragable {
+/**
+ * Interface for IDragable elements
+ */
+export interface IDragable {
   dragged: boolean;
   x: number;
   y: number;
