@@ -1,11 +1,25 @@
 # Draw.ts
 Framework for creating technical drawings with SVG 
+The Goal of the Framework is to provide functionalities for the user to draw lines himself.
+Every line is connected by 2 Endpoints, which also connect different lines together.
 
-version: 0.1-BETA
+Also the frameworks provide functionallities to make these lines dragable.
+
+With the step to TypeScript were trying to better support TS-Frameworks like Angular, but also keep support for js.
+For an not ts project just comile the ts file.
+
+version: 0.1-b
 
 ## ChangeLog:
 Previous version: 0.0
 * initialised project
+
+## Planned Features:
+Create Plugins
+* Printable: Print Mode (hide points)
+* Forms: Different Forms like
+* Fill: Colorfill for drawn forms
+* ConnectedLines: ConnectLines so they will equally be dragged
 
 
 # Installing
